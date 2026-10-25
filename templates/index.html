@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body class="bg_1">
+  <div class="dashboard">
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Header -->
+      <header class="header">
+        <div>
+          <h1 class="title">Expense Tracker</h1>
+          <p class="para">View and manage all your expenses in one place.</p>
+        </div>
+        <div class="header-actions">
+          <button class="logout" onclick="window.location.href='{{ url_for('logout') }}'">Logout</button>
+          <button class="add-btn">+ Add Transaction</button>
+        </div>
+      </header>
+
+      <!-- Summary Cards -->
+      <section class="summary">
+        <div class="card">
+          <h3>Total Transaction</h3>
+          <p id="totalTransactions" class="total">₹ {{ total_result }}</p>
+        </div>
+        <div class="card">
+          <h3>Income</h3>
+          <p id="income" class="income">₹ {{ total_income }}</p>
+        </div>
+
+        <div class="card">
+          <h3>Expense</h3>
+          <p id="expense" class="expense">₹ {{ total_expense }}</p>
+        </div>
+      </section>
+
+      <!-- Transactions Table -->
+      <section class="transactions">
+<!--        <h2>Transaction Activity</h2>-->
+        <div class="month-filter">
+          <h2 class="title">Transaction Activity </h2>
+          <form method="GET" action="{{ url_for('index') }}">
+            <select name="month" id="monthSelect" onchange="this.form.submit()">
+              <option value="">-- Select Month --</option>
+              <option value="January" {% if selected_month =='January' %} selected {% endif %}>January</option>
+              <option value="February" {% if selected_month =='February' %} selected {% endif %}>February</option>
+              <option value="March" {% if selected_month =='March' %} selected {% endif %}>March</option>
+              <option value="April" {% if selected_month =='April' %} selected {% endif %}>April</option>
+              <option value="May" {% if selected_month =='May' %} selected {% endif %}>May</option>
+              <option value="June" {% if selected_month =='June' %} selected {% endif %}>June</option>
+              <option value="July" {% if selected_month =='July' %} selected {% endif %}>July</option>
+              <option value="August" {% if selected_month =='August' %} selected {% endif %}>August</option>
+              <option value="September" {% if selected_month =='September' %} selected {% endif %}>September</option>
+              <option value="October" {% if selected_month =='October' %} selected {% endif %}>October</option>
+              <option value="November" {% if selected_month =='November' %} selected {% endif %}>November</option>
+              <option value="December" {% if selected_month =='December' %} selected {% endif %}>December</option>
+            </select>
+
+          </form>
+        </div>
+
+
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Payment Method</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+            <tr>
+              <td>{{ t.category }}</td>
+              <td>{{ t.date }}</td>
+              <td style="color:{% if t.status == 'Cash In' %}green{% else %}red{% endif %};">
+                {{ t.amount }}
+              </td>
+
+
+              <td>{{ t.payment_method }}</td>
+              <td>{{ t.status }}</td>
+              <td>
+                <button class="editBtn" data-id="{{ t.id }}">✏️</button>
+                <button class="deleteBtn" data-id="{{ t.id }}">🗑️</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+
+      <section class="right-panel">
+        <div class="chart">
+          <h3 class="title">Expense Breakdown</h3>
+          <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+
+  <div id="addTransactionModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <h2 id="modalTitle">Add Transaction</h2>
+    <form id="addTransactionForm" method="POST" action="{{ url_for('add_transaction') }}">
+      <input type="hidden" name="id" id="transactionId">
+
+      <label>Status:</label>
+      <div class="status-buttons">
+        <button type="button" class="status-btn cash-in" data-status="Cash In">Cash In</button>
+        <button type="button" class="status-btn cash-out" data-status="Cash Out">Cash Out</button>
+      </div>
+      <input type="hidden" name="status" id="statusInput" required>
+
+      <label>Category:</label>
+      <input type="text" name="category" id="categoryInput" required><br>
+
+      <label>Date:</label>
+      <input type="date" name="date" id="dateInput" required><br>
+
+      <label>Amount:</label>
+      <input type="number" name="amount" id="amountInput" required><br>
+
+      <label>Payment Method:</label>
+      <input type="text" name="payment_method" id="paymentInput" required><br>
+
+      <button type="submit">Save</button>
+      <button type="button" onclick="closeModal()">Cancel</button>
+    </form>
+  </div>
+</div>
+
+
+  <script src="{{ url_for('static', filename='expense.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    const data = {
+      labels: [{% for c in category_expenses %}'{{ c.category }}',{% endfor %}],
+      datasets: [{
+        data: [{% for c in category_expenses %}{{ c.percentage }},{% endfor %}],
+        backgroundColor: [
+          '#f44336', '#ff9800', '#ffc107', '#8bc34a', '#03a9f4', '#9c27b0', '#607d8b'
+        ],
+        borderWidth: 1
+      }]
+    };
+    new Chart(ctx, {
+      type: 'pie',
+      data: data,
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          title: { display: true, text: 'Cash Out Breakdown (%)' }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>
